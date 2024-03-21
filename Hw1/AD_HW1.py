@@ -1,6 +1,5 @@
 from sklearn.metrics import pairwise_distances
 
-
 def KNN(train_data, test_data, k):
     # Calculate distance
     distances_matrix = pairwise_distances(test_data, train_data, n_jobs=-1)
@@ -56,6 +55,46 @@ def Cosine_distance(test_data, k=5):
     pred[anomaly_index] = 1
     
     return pred    
+
+def Minkowski_distance(test_data, r=1, k=5):
+    # Calculate minkowski distance
+    diff_abs = np.abs(test_data[:, np.newaxis] - test_data)
+    if(r == None): distance_matrix = np.max(diff_abs, axis=-1)
+    else: distance_matrix = np.sum(diff_abs ** r, axis=-1) ** (1/r)
+    # Find anomaly
+    kth_nearest = np.sort(distance_matrix)[:, k-1]
+    sorted_index = np.argsort(kth_nearest)[::-1]
+    # Pick top n % as anomaly
+    n = 10
+    top_n = int(test_data.shape[0] * n * 0.01)
+    pred = np.zeros(test_data.shape[0], dtype=int)
+    anomaly_index = sorted_index[:top_n]
+    pred[anomaly_index] = 1
+    
+    return pred 
+
+def Mahalanobis_distance(train_data, test_data, k=5):
+    # Calculate inverse covariance matrix
+    covariance_matrix = np.cov(train_data, rowvar=False)
+    inv_cov_matrix = np.linalg.inv(covariance_matrix)
+    # Calculate mahalanobis_distance
+    n_samples = test_data.shape[0]
+    distance_matrix = np.zeros((n_samples, n_samples))
+    for i in range(n_samples):
+        diff_vector = test_data[i] - test_data 
+        for j in range(n_samples):
+            distance_matrix[i, j] = np.dot(np.dot(diff_vector[j], inv_cov_matrix), diff_vector[j].T) ** 1/2
+    # Find anomaly
+    kth_nearest = np.sort(distance_matrix)[:, k-1]
+    sorted_index = np.argsort(kth_nearest)[::-1]
+    # Pick top n % as anomaly
+    n = 10
+    top_n = int(test_data.shape[0] * n * 0.01)
+    pred = np.zeros(test_data.shape[0], dtype=int)
+    anomaly_index = sorted_index[:top_n]
+    pred[anomaly_index] = 1
+    
+    return pred          
 
 ########################################################
 ########  Do not modify the sample code segment ########
@@ -159,6 +198,10 @@ if __name__ == "__main__":
     Kmeans_5_score = []
     Kmeans_10_score = []
     Cosine_distance_score = []
+    Minkowski_1_score = []
+    Minkowski_2_score = []
+    Minkowski_inf_score = []
+    Mahalanobis_score = []
     for i in tqdm.tqdm(range(10)):
         train_data = orig_train_data[orig_train_label == i]
         test_data, test_label = resample(
@@ -167,10 +210,8 @@ if __name__ == "__main__":
         # [TODO] prepare training/testing data with label==i labeled as 0, and others labeled as 1
         train_label = np.zeros(len(train_data), dtype=int)
         for j in range(len(test_label)):
-            if test_label[j] == i:
-                test_label[j] = 0
-            else:
-                test_label[j] = 1
+            if test_label[j] == i: test_label[j] = 0
+            else: test_label[j] = 1
         test_label = np.array(test_label, dtype=int)
 
         # [TODO] implement methods
@@ -193,9 +234,23 @@ if __name__ == "__main__":
         #     else: Kmeans_10_score.append(score)
 
         # Distance based
-        pred = Cosine_distance(test_data, k=5)
+        # Cosine distance
+        # pred = Cosine_distance(test_data, k=5)
+        # score = roc_auc_score(test_label, pred)
+        # Cosine_distance_score.append(score)
+        
+        # Minkowski distance
+        # for r in [1, 2, None]:
+        #     pred = Minkowski_distance(test_data, r=r, k=5)
+        #     score = roc_auc_score(test_label, pred)
+        #     if(r == 1): Minkowski_1_score.append(score)
+        #     elif(r == 2): Minkowski_2_score.append(score)
+        #     else: Minkowski_inf_score.append(score)
+        
+        # Mahalanobis Distance
+        pred = Mahalanobis_distance(train_data, test_data, k=5)
         score = roc_auc_score(test_label, pred)
-        Cosine_distance_score.append(score)
+        Mahalanobis_score.append(score)        
 
     # [TODO] print the average ROC-AUC for each method
     # print("KNN with k=1 score:", np.mean(KNN_1_score))
@@ -204,4 +259,8 @@ if __name__ == "__main__":
     # print("Kmeans with k=1 score:", np.mean(Kmeans_1_score))
     # print("Kmeans with k=5 score:", np.mean(Kmeans_5_score))
     # print("Kmeans with k=10 score:", np.mean(Kmeans_10_score))
-    print("Cosine Distance with k=5 score:", np.mean(Cosine_distance_score))
+    # print("Cosine Distance with k=5 score:", np.mean(Cosine_distance_score))
+    # print("Minkowski  Distance with r=1 score:", np.mean(Minkowski_1_score))
+    # print("Minkowski  Distance with r=2 score:", np.mean(Minkowski_2_score))
+    # print("Minkowski  Distance with r=inf score:", np.mean(Minkowski_inf_score))
+    print("Mahalanobis Distance with k=5 score:", np.mean(Mahalanobis_score))
