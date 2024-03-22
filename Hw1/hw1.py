@@ -6,7 +6,7 @@ from sklearn.manifold import TSNE
 def KNN(train_data, test_data, k):
     # Calculate distance
     distances_matrix = pairwise_distances(test_data, train_data, n_jobs=-1)
-    k_nearest = np.sort(distances_matrix)[:, 1 : k + 1]  # omit the first, namely itself
+    k_nearest = np.sort(distances_matrix)[:, :k]
     anomaly_score = np.mean(k_nearest, axis=1)
     sorted_index = np.argsort(anomaly_score)[::-1]  # descending  order
     # Pick top n % as anomaly
@@ -93,9 +93,7 @@ def Mahalanobis_distance(train_data, test_data, k=5):
         diff_vector = test_data[i] - test_data
         for j in range(n_samples):
             distance_matrix[i, j] = (
-                np.dot(np.dot(diff_vector[j], inv_cov_matrix), diff_vector[j].T) ** 1
-                / 2
-            )
+                np.dot(np.dot(diff_vector[j], inv_cov_matrix), diff_vector[j].T) ** (1 / 2))
     # Find anomaly
     kth_nearest = np.sort(distance_matrix)[:, k]  # omit the first, namely itself
     sorted_index = np.argsort(kth_nearest)[::-1]  # descending  order
@@ -133,7 +131,7 @@ def visualize_lof(test_data, test_label, lof_score):
     tsne = TSNE(n_components=2, random_state=42)
     test_data_2d = tsne.fit_transform(test_data)
 
-    fig, ax = plt.subplots(1, 2, figsize=(14, 6))
+    _, ax = plt.subplots(1, 2, figsize=(14, 6))
 
     sc1 = ax[0].scatter(
         test_data_2d[:, 0], test_data_2d[:, 1], c=lof_score, cmap="viridis", s=5
@@ -276,7 +274,7 @@ if __name__ == "__main__":
     Minkowski_inf_score = []
     Mahalanobis_score = []
     LOF_score = []
-    test_data_0, test_label_0, lof_score_0 = None, None, None
+    test_data_0, test_label_0, lof_score_0 = None, None, None # be used for visualize
     
     for i in tqdm.tqdm(range(10)):
         train_data = orig_train_data[orig_train_label == i]
