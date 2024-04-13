@@ -52,7 +52,7 @@ def DFT(data, m):
 
     # for visualization purpose
     reconstruct_data = np.zeros_like(fft_data)
-    reconstruct_data[:, :m] = lowest_data
+    reconstruct_data[:, lowest_index] = lowest_data
     
     return magnitude, reconstruct_data
 
@@ -67,13 +67,13 @@ def DFT_Function(train_data, test_data, m, k):
     return anomaly_score, reconstruct_data
 
 def DWT(data, s, max_pow):
-    # 
     dwt_coefs = []
+    # build DWT table
     for i in range(data.shape[0]):
-        approx = data[i, :].tolist()
+        approx = data[i, :].tolist() # previous level approximate
         coef = []
-        detail_level = []
-        for j in range(max_pow):
+        detail_level = [] 
+        for j in range(max_pow): # max_pow indicate max level to do
             new_approx = []
             new_detail = []
             for k in range(0, len(approx), 2):
@@ -81,12 +81,13 @@ def DWT(data, s, max_pow):
                 new_detail.append((approx[k+1] - approx[k]) / 2)
             approx = new_approx
             detail_level.append(new_detail)
-        coef.append(approx[0])
+        # get S coefficients according to level
+        coef.append(approx[0]) # first coef always be the last level aprox
         level_s = int(math.log2(s))
         details_index = max_pow - 1
         for j in range(level_s):
             for detail in detail_level[details_index]:
-                coef.append(detail)
+                coef.append(detail) 
             details_index -= 1
         dwt_coefs.append(coef)
 
@@ -159,8 +160,8 @@ def Visualization(data, label, subtitle, n_samples=10):
     abnormal_data = data[label == 1]
 
     # Randomly select samples
-    normal_indices = np.random.choice(normal_data.shape[0], n_samples, replace=True)
-    abnormal_indices = np.random.choice(abnormal_data.shape[0], n_samples, replace=True)
+    normal_indices = np.random.choice(normal_data.shape[0], n_samples, replace=False)
+    abnormal_indices = np.random.choice(abnormal_data.shape[0], n_samples, replace=False)
     
     # Plotting
     fig, axes = plt.subplots(2, 1, figsize=(8, 8))
@@ -198,58 +199,65 @@ if __name__=='__main__':
     test_data, test_label = resample(test_data, test_label, outlier_ratio=0.1, target_label=1)
 
     # KNN
-    anomaly_score = KNN(train_data, test_data, 5)
-    score = roc_auc_score(test_label, anomaly_score)
-    print(f"KNN with k=5 score: {score}\n")
+    max_score = 0
+    max_k = 0
+    for k in range(1, 8):
+        anomaly_score = KNN(train_data, test_data, k)
+        score = roc_auc_score(test_label, anomaly_score)
+        # print(f"KNN with k={k} on {category} score: {score}")
+        if(max_score < score):
+            max_score = score
+            max_k = k
+    print(f"KNN with k={max_k} has max score on {category}: {max_score}\n")
     
     # PCA
     min_dist = 1e9
     min_n = 0
     for n in range(5, min(test_data.shape[0], test_data.shape[1]), 5):
         anomaly_score, _ = PCA_Reconstruction(train_data, test_data, n)
-        # print(f"PCA with n={n} score: {anomaly_score}")
+        # print(f"PCA with n={n} on {category} score: {anomaly_score}")
         if(min_dist > anomaly_score): 
             min_dist = anomaly_score
             min_n = n
-    print(f"PCA with n={min_n} has min dist: {min_dist}\n")
+    print(f"PCA with n={min_n} has min dist on {category}: {min_dist}\n")
 
     
     # DFT
     max_score = 0
     max_m = 0
-    for m in range(1, min(test_data.shape[0], test_data.shape[1])):
-        anomaly_score, _ = DFT_Function(train_data, test_data, m=m, k=2)
+    for m in range(1, 40):
+        anomaly_score, _ = DFT_Function(train_data, test_data, m=m, k=5)
         score = roc_auc_score(test_label, anomaly_score)
-        # print(f"DFT with m={m} and k=5 score: {score}")
+        # print(f"DFT with m={m} and k=5 on {category} score: {score}")
         if(max_score < score): 
             max_score = score
             max_m = m
-    print(f"DFT with m={max_m} and k=5 has max score: {max_score}\n")
+    print(f"DFT with m={max_m} and k=5 has max score on {category}: {max_score}\n")
 
     # DWT
     max_score = 0
     max_s = 0
     s = 1
     while(1):
-        anomaly_score = DWT_Function(train_data, test_data, s=s, k=2)
+        anomaly_score = DWT_Function(train_data, test_data, s=s, k=4)
         score = roc_auc_score(test_label, anomaly_score)
-        # print(f"DWT with s={s} and k=5 score: {score}")
+        # print(f"DWT with s={s} and k=5 on {category} score: {score}")
         if(max_score < score):
             max_score = score
             max_s = s
         s *= 2
         if(s > int(math.pow(2, math.ceil(math.log2(train_data.shape[1]))))):
             break
-    print(f"DWT with s={max_s} and k=5 has max score: {max_score}\n")
+    print(f"DWT with s={max_s} and k=4 has max score on {category}: {max_score}\n")
     
     # Raw Data Visualization
-    # Visualization(plot_data, plot_label, category, n_samples=10)
+    Visualization(plot_data, plot_label, category + " Dataset", n_samples=10)
     
-    # # PCA Visualization
-    # _, reconstruct_data = PCA_Reconstruction(train_data, plot_data, 5)
-    # Visualization(reconstruct_data, plot_label, category, n_samples=10)
+    # PCA Visualization
+    _, reconstruct_data = PCA_Reconstruction(train_data, plot_data, min_n)
+    Visualization(reconstruct_data, plot_label, category + f" PCA={min_n}", n_samples=10)
     
-    # # DFT Visualization
-    # _, reconstruct_data = DFT_Function(train_data, plot_data, 20, 2)
-    # reconstruct_data = ifft(reconstruct_data).real
-    # Visualization(reconstruct_data, plot_label, category, n_samples=10)
+    # DFT Visualization
+    _, reconstruct_data = DFT_Function(train_data, plot_data, max_m, 5)
+    reconstruct_data = ifft(reconstruct_data).real
+    Visualization(reconstruct_data, plot_label, category + f" DFT={max_m}", n_samples=10)
