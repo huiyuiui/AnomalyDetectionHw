@@ -34,9 +34,11 @@ def PCA_Reconstruction(train_data, test_data, n):
     reconstruct_test = pca.inverse_transform(transform_data) # for visualization purpose
 
     # Calculate anomaly score
-    anomaly_score = np.mean(np.linalg.norm(test_data - reconstruct_test))
+    anomaly_score = []
+    for i in range(test_data.shape[0]):
+        anomaly_score.append(np.linalg.norm(test_data[i] - reconstruct_test[i]))
     
-    return anomaly_score, reconstruct_test
+    return np.array(anomaly_score), reconstruct_test
 
 def DFT(data, m):
     # DFT
@@ -211,15 +213,16 @@ if __name__=='__main__':
     print(f"KNN with k={max_k} has max score on {category}: {max_score}\n")
     
     # PCA
-    min_dist = 1e9
-    min_n = 0
+    max_score = 0
+    max_n = 0
     for n in range(5, min(test_data.shape[0], test_data.shape[1]), 5):
         anomaly_score, _ = PCA_Reconstruction(train_data, test_data, n)
-        # print(f"PCA with n={n} on {category} score: {anomaly_score}")
-        if(min_dist > anomaly_score): 
-            min_dist = anomaly_score
-            min_n = n
-    print(f"PCA with n={min_n} has min dist on {category}: {min_dist}\n")
+        score = roc_auc_score(test_label, anomaly_score)
+        # print(f"PCA with n={n} on {category} score: {score}")
+        if(max_score < score): 
+            max_score = score
+            max_n = n
+    print(f"PCA with n={max_n} has max score on {category}: {max_score}\n")
 
     
     # DFT
@@ -254,8 +257,8 @@ if __name__=='__main__':
     Visualization(plot_data, plot_label, category + " Dataset", n_samples=10)
     
     # PCA Visualization
-    _, reconstruct_data = PCA_Reconstruction(train_data, plot_data, min_n)
-    Visualization(reconstruct_data, plot_label, category + f" PCA={min_n}", n_samples=10)
+    _, reconstruct_data = PCA_Reconstruction(train_data, plot_data, max_n)
+    Visualization(reconstruct_data, plot_label, category + f" PCA={max_n}", n_samples=10)
     
     # DFT Visualization
     _, reconstruct_data = DFT_Function(train_data, plot_data, max_m, 5)
