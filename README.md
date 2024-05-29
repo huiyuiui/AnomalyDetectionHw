@@ -6,3 +6,4 @@
 - [Anomaly Detection on MNIST](./Hw1/)
 - [Anomaly Detection on Time Series Data](./Hw2/)
 - [SimpleNet Implementation on MVTEC](./Hw3/)
+- [Experiment on Jigsaw-VAD](./Hw4/)
