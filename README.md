@@ -5,3 +5,4 @@
 ### Homework Directory
 - [Anomaly Detection on MNIST](./Hw1/)
 - [Anomaly Detection on Time Series Data](./Hw2/)
+- [SimpleNet Implementation on MVTEC](./Hw3/)
